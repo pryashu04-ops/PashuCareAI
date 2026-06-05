@@ -112,12 +112,18 @@ const Login = () => {
           </button>
         </form>
 
-        <div className="text-center pt-2">
+        <div className="text-center pt-4 border-t border-slate-850 mt-6 flex flex-col space-y-2">
           <Link
             to="/register"
             className="text-sm font-semibold text-emerald-450 hover:text-emerald-400 hover:underline"
           >
             {t("needAccount")}
+          </Link>
+          <Link
+            to="/admin/login"
+            className="text-xs font-semibold text-slate-500 hover:text-slate-450 hover:underline"
+          >
+            Are you an Administrator? Sign in here
           </Link>
         </div>
       </motion.div>
