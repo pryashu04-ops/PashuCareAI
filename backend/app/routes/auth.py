@@ -44,7 +44,12 @@ async def register(data: UserCreate):
     token = create_token(user_id)
     return TokenResponse(
         token=token,
-        user=UserResponse(id=user_id, name=user_doc["name"], email=user_doc["email"]),
+        user=UserResponse(
+            id=user_id,
+            name=user_doc["name"],
+            email=user_doc["email"],
+            role=user_doc.get("role", "user")
+        ),
     )
 
 
@@ -63,7 +68,12 @@ async def login(data: UserLogin):
     token = create_token(user_id)
     return TokenResponse(
         token=token,
-        user=UserResponse(id=user_id, name=user["name"], email=user["email"]),
+        user=UserResponse(
+            id=user_id,
+            name=user["name"],
+            email=user["email"],
+            role=user.get("role", "user")
+        ),
     )
 
 
@@ -74,4 +84,5 @@ async def get_me(user=Depends(get_current_user)):
         id=str(user["_id"]),
         name=user["name"],
         email=user["email"],
+        role=user.get("role", "user"),
     )

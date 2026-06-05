@@ -118,6 +118,32 @@ class MockCollection:
                 results.append(dict(doc))
         return MockCursor(results)
 
+    async def update_one(self, query, update):
+        for idx, doc in enumerate(self.documents):
+            match = True
+            for k, v in query.items():
+                if k == "_id":
+                    doc_id = str(doc.get("_id"))
+                    query_id = str(v)
+                    if doc_id != query_id:
+                        match = False
+                elif doc.get(k) != v:
+                    match = False
+            if match:
+                set_dict = update.get("$set", {})
+                for uk, uv in set_dict.items():
+                    doc[uk] = uv
+                self.documents[idx] = doc
+                self._save()
+                class UpdateResult:
+                    def __init__(self, modified_count):
+                        self.modified_count = modified_count
+                return UpdateResult(1)
+        class UpdateResult:
+            def __init__(self, modified_count):
+                self.modified_count = modified_count
+        return UpdateResult(0)
+
     async def delete_one(self, query):
         for idx, doc in enumerate(self.documents):
             match = True
@@ -218,3 +244,34 @@ async def close_db():
 def get_db():
     """Return the database instance."""
     return db
+
+
+async def create_initial_admin():
+    """Create initial admin account if not exists."""
+    global db
+    if db is None:
+        return
+    
+    admin_email = "admin@example.com"
+    admin_password = "ChangeMe123@"
+    
+    try:
+        admin = await db.users.find_one({"email": admin_email})
+        if not admin:
+            print("[INFO] Creating initial admin account in FastAPI...")
+            from .services.auth_service import hash_password
+            admin_doc = {
+                "name": "Administrator",
+                "email": admin_email,
+                "password": hash_password(admin_password),
+                "role": "admin",
+                "created_at": datetime.now(timezone.utc).isoformat()
+            }
+            await db.users.insert_one(admin_doc)
+            print("[INFO] Initial admin account created successfully in FastAPI!")
+        else:
+            if admin.get("role") != "admin":
+                await db.users.update_one({"_id": admin["_id"]}, {"$set": {"role": "admin"}})
+    except Exception as e:
+        print(f"[ERROR] Failed to check/create initial admin in FastAPI: {e}")
+

@@ -31,7 +31,7 @@ from fastapi.responses import HTMLResponse
 
 from .config import settings
 from .database import connect_db, close_db
-from .routes import auth, detection, vets, chat
+from .routes import auth, detection, vets, chat, admin
 
 app = FastAPI(
     title="PashuCare AI Backend",
@@ -60,6 +60,8 @@ app.mount("/uploads", StaticFiles(directory=settings.UPLOAD_DIR), name="uploads"
 async def startup_event():
     """Run startup tasks such as connecting to the database."""
     await connect_db()
+    from .database import create_initial_admin
+    await create_initial_admin()
 
 
 @app.on_event("shutdown")
@@ -73,6 +75,7 @@ app.include_router(auth.router)
 app.include_router(detection.router)
 app.include_router(vets.router)
 app.include_router(chat.router)
+app.include_router(admin.router)
 
 
 @app.get("/", response_class=HTMLResponse)

@@ -39,9 +39,11 @@ console.log(`[INFO] Connecting to MongoDB Atlas database: ${dbName}...`);
 mongoose.connect(mongoURI, { dbName, serverSelectionTimeoutMS: 3000 })
   .then(() => {
     console.log(`[INFO] Successfully connected to MongoDB database: ${dbName}`);
+    createInitialAdmin();
   })
   .catch(err => {
     console.warn(`[WARN] MongoDB Atlas connection failed (${err.message}). Using local JSON database fallback (mock_database.json).`);
+    createInitialAdmin();
   });
 
 // Check if mongoose is currently connected
@@ -52,6 +54,7 @@ const userSchema = new mongoose.Schema({
   name: { type: String, required: true },
   email: { type: String, required: true, unique: true, lowercase: true, trim: true },
   password: { type: String, required: true },
+  role: { type: String, enum: ["user", "admin"], default: "user" },
   created_at: { type: String, default: () => new Date().toISOString() }
 });
 const User = mongoose.model('User', userSchema, 'users');
@@ -140,7 +143,8 @@ const findUserByEmail = async (email) => {
       name: user.name,
       email: user.email,
       password: user.password,
-      toObject: () => user
+      role: user.role || 'user',
+      toObject: () => ({ role: 'user', ...user })
     };
   }
   return null;
@@ -163,7 +167,8 @@ const findUserById = async (id) => {
       name: user.name,
       email: user.email,
       password: user.password,
-      toObject: () => user
+      role: user.role || 'user',
+      toObject: () => ({ role: 'user', ...user })
     };
   }
   return null;
@@ -187,6 +192,7 @@ const saveUser = async (userData) => {
     name: userData.name,
     email: userData.email,
     password: userData.password,
+    role: userData.role || 'user',
     created_at: new Date().toISOString()
   };
   dbData.users.push(newUser);
@@ -402,6 +408,49 @@ const findMessageBySessionAndText = async (sessionId, role, text) => {
   return (dbData.chat_messages || []).find(m => m.session_id === sessionId && m.role === role && m.text === text);
 };
 
+const createInitialAdmin = async () => {
+  const adminEmail = "admin@example.com";
+  const adminPassword = "ChangeMe123@";
+  
+  try {
+    const existing = await findUserByEmail(adminEmail);
+    if (!existing) {
+      console.log("[INFO] Creating initial admin account...");
+      const hashedPassword = bcrypt.hashSync(adminPassword, 10);
+      await saveUser({
+        name: "Administrator",
+        email: adminEmail,
+        password: hashedPassword,
+        role: "admin"
+      });
+      console.log("[INFO] Initial admin account created successfully!");
+    } else {
+      if (isDbConnected()) {
+        await User.updateOne({ email: adminEmail }, { $set: { role: "admin" } });
+      } else {
+        const dbData = readMockDb();
+        const adminUser = (dbData.users || []).find(u => u.email.toLowerCase() === adminEmail);
+        if (adminUser && adminUser.role !== "admin") {
+          adminUser.role = "admin";
+          writeMockDb(dbData);
+        }
+      }
+    }
+  } catch (error) {
+    console.error("[ERROR] Failed to check/create initial admin:", error.message);
+  }
+};
+
+const authenticateAdmin = (req, res, next) => {
+  authenticateToken(req, res, () => {
+    if (req.user && req.user.role === 'admin') {
+      next();
+    } else {
+      return res.status(403).json({ detail: "Forbidden: Admin access required" });
+    }
+  });
+};
+
 // --- Auth Middleware ---
 const authenticateToken = async (req, res, next) => {
   try {
@@ -424,7 +473,8 @@ const authenticateToken = async (req, res, next) => {
       _id: userIdStr,
       id: userIdStr,
       name: user.name,
-      email: user.email
+      email: user.email,
+      role: user.role || 'user'
     };
     next();
   } catch (error) {
@@ -549,7 +599,8 @@ app.post('/api/auth/register', async (req, res) => {
       user: {
         id: userIdStr,
         name: userDoc.name,
-        email: userDoc.email
+        email: userDoc.email,
+        role: userDoc.role || 'user'
       }
     });
   } catch (error) {
@@ -579,7 +630,8 @@ app.post('/api/auth/login', async (req, res) => {
       user: {
         id: userIdStr,
         name: user.name,
-        email: user.email
+        email: user.email,
+        role: user.role || 'user'
       }
     });
   } catch (error) {
@@ -1135,6 +1187,91 @@ app.post('/api/chat/image', authenticateToken, upload.single('file'), async (req
       try { fs.unlinkSync(req.file.path); } catch (e) {}
     }
     res.status(400).json({ detail: error.message || "Failed to process diagnostic image in chat" });
+  }
+});
+
+// 9. Admin Statistics Dashboard
+app.get('/api/admin/stats', authenticateAdmin, async (req, res) => {
+  try {
+    let totalUsers = 0;
+    let totalDetections = 0;
+    let totalMessages = 0;
+    let recentDetections = [];
+    let recentUsers = [];
+    let systemStats = {
+      os: require('os').platform(),
+      uptime: require('os').uptime(),
+      memory: {
+        free: require('os').freemem(),
+        total: require('os').totalmem()
+      },
+      nodeVersion: process.version
+    };
+
+    if (isDbConnected()) {
+      totalUsers = await User.countDocuments();
+      totalDetections = await Detection.countDocuments();
+      totalMessages = await ChatMessage.countDocuments();
+      
+      const detections = await Detection.find().sort({ timestamp: -1 }).limit(5);
+      recentDetections = detections.map(d => ({
+        id: d._id.toString(),
+        disease_name: d.disease_name,
+        animal_type: d.animal_type,
+        timestamp: d.timestamp,
+        user_id: d.user_id
+      }));
+
+      const users = await User.find().sort({ created_at: -1 }).limit(5);
+      recentUsers = users.map(u => ({
+        id: u._id.toString(),
+        name: u.name,
+        email: u.email,
+        created_at: u.created_at
+      }));
+    } else {
+      const dbData = readMockDb();
+      totalUsers = (dbData.users || []).length;
+      totalDetections = (dbData.detections || []).length;
+      totalMessages = (dbData.chat_messages || []).length;
+
+      recentDetections = (dbData.detections || [])
+        .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
+        .slice(0, 5)
+        .map(d => ({
+          id: d._id,
+          disease_name: d.disease_name,
+          animal_type: d.animal_type,
+          timestamp: d.timestamp,
+          user_id: d.user_id
+        }));
+
+      recentUsers = (dbData.users || [])
+        .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+        .slice(0, 5)
+        .map(u => ({
+          id: u._id,
+          name: u.name,
+          email: u.email,
+          created_at: u.created_at
+        }));
+    }
+
+    res.json({
+      stats: {
+        totalUsers,
+        totalDetections,
+        totalMessages
+      },
+      recentActivity: {
+        recentDetections,
+        recentUsers
+      },
+      systemStats
+    });
+  } catch (error) {
+    console.error("Admin stats error:", error);
+    res.status(500).json({ detail: "Failed to fetch admin stats" });
   }
 });
 

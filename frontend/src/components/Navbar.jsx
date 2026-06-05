@@ -29,6 +29,7 @@ const Navbar = () => {
     { name: t("vets"), path: "/vets", icon: Compass },
     ...(user ? [{ name: t("history"), path: "/history", icon: History }] : []),
     ...(user ? [{ name: t("settings"), path: "/settings", icon: Settings }] : []),
+    ...(user && user.role === "admin" ? [{ name: "Admin", path: "/admin/dashboard", icon: Award }] : []),
   ];
 
   const handleLogout = () => {
