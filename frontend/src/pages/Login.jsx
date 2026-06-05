@@ -28,7 +28,11 @@ const Login = () => {
     setLoading(false);
 
     if (result.success) {
-      navigate("/detect");
+      if (result.user && result.user.role === "admin") {
+        navigate("/admin/dashboard");
+      } else {
+        navigate("/detect");
+      }
     }
   };
 

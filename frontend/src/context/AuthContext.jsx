@@ -42,7 +42,7 @@ export const AuthProvider = ({ children }) => {
       const res = await api.post("/api/auth/login", { email, password });
       setToken(res.data.token);
       setUser(res.data.user);
-      return { success: true };
+      return { success: true, user: res.data.user };
     } catch (err) {
       let msg = "Login failed. Please check credentials.";
       if (!err.response) {
