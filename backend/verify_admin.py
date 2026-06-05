@@ -8,8 +8,8 @@ def test_admin_flow():
     print("Testing admin login...")
     login_url = f"{base_url}/api/auth/login"
     login_payload = {
-        "email": "admin@example.com",
-        "password": "ChangeMe123@"
+        "email": "yashaswinipr09@gmail.com",
+        "password": "@pryashaswini09"
     }
     
     try:

@@ -409,8 +409,8 @@ const findMessageBySessionAndText = async (sessionId, role, text) => {
 };
 
 const createInitialAdmin = async () => {
-  const adminEmail = "admin@example.com";
-  const adminPassword = "ChangeMe123@";
+  const adminEmail = "yashaswinipr09@gmail.com";
+  const adminPassword = "@pryashaswini09";
   
   try {
     const existing = await findUserByEmail(adminEmail);

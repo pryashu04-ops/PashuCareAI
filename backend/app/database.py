@@ -252,8 +252,8 @@ async def create_initial_admin():
     if db is None:
         return
     
-    admin_email = "admin@example.com"
-    admin_password = "ChangeMe123@"
+    admin_email = "yashaswinipr09@gmail.com"
+    admin_password = "@pryashaswini09"
     
     try:
         admin = await db.users.find_one({"email": admin_email})
