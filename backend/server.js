@@ -445,7 +445,14 @@ const runPythonScript = (scriptName, args = [], inputData = null) => {
       pythonExecutable = 'python';
     }
 
-    const child = spawn(pythonExecutable, [scriptName, ...args], { cwd: __dirname });
+    const child = spawn(pythonExecutable, [scriptName, ...args], { 
+      cwd: __dirname,
+      env: {
+        ...process.env,
+        PYTHONIOENCODING: 'utf-8',
+        PYTHONUTF8: '1'
+      }
+    });
     
     let stdout = '';
     let stderr = '';

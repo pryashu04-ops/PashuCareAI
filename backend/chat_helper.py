@@ -3,6 +3,12 @@ import json
 import os
 import asyncio
 
+# Force UTF-8 encoding for standard streams
+if hasattr(sys.stdin, 'reconfigure'):
+    sys.stdin.reconfigure(encoding='utf-8', errors='ignore')
+if hasattr(sys.stdout, 'reconfigure'):
+    sys.stdout.reconfigure(encoding='utf-8', errors='ignore')
+
 # Set Python path to find backend app modules
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 

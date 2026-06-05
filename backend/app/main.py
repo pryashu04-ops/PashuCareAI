@@ -2,6 +2,13 @@
 
 import os
 import logging
+import sys
+
+# Force UTF-8 encoding for standard streams
+if hasattr(sys.stdin, 'reconfigure'):
+    sys.stdin.reconfigure(encoding='utf-8', errors='ignore')
+if hasattr(sys.stdout, 'reconfigure'):
+    sys.stdout.reconfigure(encoding='utf-8', errors='ignore')
 
 # Configure logging to write to app_errors.log and console
 LOG_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
