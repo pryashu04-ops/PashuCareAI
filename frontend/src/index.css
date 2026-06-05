@@ -1,0 +1,26 @@
+@import "tailwindcss";
+
+/* Custom Scrollbar */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: #0f172a;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #1e293b;
+  border-radius: 3px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #334155;
+}
+
+/* Custom transitions and resets */
+input, select, button {
+  transition: all 0.2s ease-in-out;
+}
+
+.selection\:bg-emerald-500::selection {
+  background-color: #10b981;
+  color: #0f172a;
+}
